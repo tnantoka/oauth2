@@ -89,6 +89,7 @@ module OAuth2
       connection.response :logger, ::Logger.new($stdout) if ENV['OAUTH_DEBUG'] == 'true'
 
       url = connection.build_url(url, opts[:params]).to_s
+      origin_host = URI.parse(url).host
 
       response = connection.run_request(verb, url, opts[:body], opts[:headers]) do |req|
         yield(req) if block_given?
@@ -103,6 +104,9 @@ module OAuth2
         if response.status == 303
           verb = :get
           opts.delete(:body)
+        end
+        if URI.parse(response.headers['location']).host != origin_host
+          opts[:headers].delete('Authorization')
         end
         request(verb, response.headers['location'], opts)
       when 200..299, 300..399
